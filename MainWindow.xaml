@@ -10,7 +10,7 @@
         <Style x:Key="NavButton" TargetType="Button">
             <Setter Property="Height" Value="38" />
             <Setter Property="Margin" Value="0,2" />
-            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Padding" Value="10,0" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Foreground" Value="#A9B0B8" />
             <Setter Property="Background" Value="Transparent" />
@@ -68,7 +68,7 @@
 
         <Grid ClipToBounds="True">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="150" />
+                <ColumnDefinition Width="128" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -81,11 +81,11 @@
                         <RowDefinition Height="46" />
                     </Grid.RowDefinitions>
 
-                    <Button Grid.Row="0" x:Name="AddButton" Margin="10,8" Height="40"
+                    <Button Grid.Row="0" x:Name="AddButton" Margin="8,8" Height="40"
                             Style="{StaticResource NavButton}" Foreground="#F3F5F7"
                             Background="{DynamicResource HoverBrush}" Click="AddButton_Click">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="＋" FontSize="18" Margin="0,-1,9,0" />
+                            <TextBlock Text="＋" FontSize="18" Margin="0,-1,6,0" />
                             <TextBlock Text="新增记录" FontSize="13" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
