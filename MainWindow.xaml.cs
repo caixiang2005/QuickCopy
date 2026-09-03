@@ -966,7 +966,6 @@ namespace QuickCopy
                     var title = (string)element.Attribute("title");
                     if (String.IsNullOrWhiteSpace(title)) continue;
                     var category = (string)element.Attribute("category") ?? "其他";
-                    if (deletedCategories.Contains(category)) continue;
                     var imagePath = (string)element.Attribute("image");
                     var rawText = element.Value;
                     demoRecords[title] = category == ClipboardCategory
@@ -1007,12 +1006,7 @@ namespace QuickCopy
 
         private static Dictionary<string, DemoRecord> CreateDemoRecords()
         {
-            return new Dictionary<string, DemoRecord>(StringComparer.CurrentCultureIgnoreCase)
-            {
-                { "New-api", ParseDemoRecord("New-api", "内部系统", "网址：http://192.168.0.134:3000\n账号：admin\n密码：demo-password\nToken：demo-token-value\n备注：测试环境，整段粘贴后按行显示。") },
-                { "n8n 测试环境", ParseDemoRecord("n8n 测试环境", "服务器", "网址: http://192.168.0.134:5678\n邮箱: demo@example.com\n密码: n8n-demo-password\nToken: n8n-demo-token") },
-                { "GitLab 公司仓库", ParseDemoRecord("GitLab 公司仓库", "代码仓库", "网址：https://gitlab.example.local\n账号：demo-user\n密码：gitlab-demo-password\nToken：glpat-demo-token\n备注：这里全部是虚拟数据。") }
-            };
+            return new Dictionary<string, DemoRecord>(StringComparer.CurrentCultureIgnoreCase);
         }
 
         private static DemoRecord ParseDemoRecord(string title, string category, string rawText)
