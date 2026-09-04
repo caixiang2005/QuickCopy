@@ -66,6 +66,7 @@ namespace QuickCopy
         private readonly HashSet<string> deletedRecordTitles = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
         private readonly HashSet<string> deletedCategories = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
         private readonly List<string> categoryOrder = new List<string>();
+        private readonly List<string> recordOrder = new List<string>();
         private readonly string recordsPath;
         private readonly string clipboardImagesFolder;
         private readonly DispatcherTimer copyToastTimer;
@@ -76,6 +77,8 @@ namespace QuickCopy
         private string editingOriginalImagePath;
         private Point categoryDragStart;
         private string draggedCategory;
+        private Point recordTabDragStart;
+        private string draggedRecordTitle;
         private bool isLightTheme;
         private bool isPinned;
         private IntPtr pasteTargetWindow;
@@ -282,6 +285,7 @@ namespace QuickCopy
                 }
                 deletedRecordTitles.Add(record.Title);
                 demoRecords.Remove(record.Title);
+                RemoveRecordFromOrder(record.Title);
             }
             deletedCategories.Add(selectedCategory);
             RemoveCategoryButton(selectedCategory);
@@ -312,6 +316,7 @@ namespace QuickCopy
             }
             deletedRecordTitles.Add(record.Title);
             demoRecords.Remove(record.Title);
+            RemoveRecordFromOrder(record.Title);
             SaveRecords();
             RenderRecords();
         }
@@ -609,10 +614,12 @@ namespace QuickCopy
             {
                 demoRecords.Remove(editingOriginalTitle);
                 deletedRecordTitles.Add(editingOriginalTitle);
+                RemoveRecordFromOrder(editingOriginalTitle);
             }
             deletedCategories.Remove(category);
             deletedRecordTitles.Remove(title);
             demoRecords[title] = record;
+            EnsureRecordOrder(title, category);
             EnsureCategoryButton(category);
             SaveRecords();
             selectedCategory = category;
@@ -725,6 +732,18 @@ namespace QuickCopy
             e.Handled = true;
         }
 
+        private void EnsureRecordOrder(string title, string category)
+        {
+            if (String.Equals(category, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)) return;
+            if (!recordOrder.Any(existing => String.Equals(existing, title, StringComparison.CurrentCultureIgnoreCase)))
+                recordOrder.Add(title);
+        }
+
+        private void RemoveRecordFromOrder(string title)
+        {
+            recordOrder.RemoveAll(existing => String.Equals(existing, title, StringComparison.CurrentCultureIgnoreCase));
+        }
+
         private void RefreshEditorCategories()
         {
             if (EditorCategory == null) return;
@@ -771,8 +790,7 @@ namespace QuickCopy
             var query = SearchBox == null ? "" : SearchBox.Text.Trim();
             Button firstButton = null;
             var selectedIsVisible = false;
-            var records = demoRecords.Values.Where(record => record.Category == selectedCategory);
-            records = records.OrderBy(record => record.Title, StringComparer.CurrentCultureIgnoreCase);
+            var records = GetOrderedRecords(selectedCategory);
             foreach (var record in records)
             {
                 if (query.Length > 0 && record.SearchText.IndexOf(query, StringComparison.CurrentCultureIgnoreCase) < 0) continue;
@@ -786,6 +804,12 @@ namespace QuickCopy
                     ToolTip = record.Title
                 };
                 button.Click += Record_Click;
+                button.AllowDrop = true;
+                button.Cursor = Cursors.SizeWE;
+                button.ToolTip = record.Title + Environment.NewLine + "拖拽调整左右顺序";
+                button.PreviewMouseLeftButtonDown += RecordTab_PreviewMouseLeftButtonDown;
+                button.PreviewMouseMove += RecordTab_PreviewMouseMove;
+                button.Drop += RecordTab_Drop;
                 RecordsPanel.Children.Add(button);
                 if (firstButton == null) firstButton = button;
                 if (record.Title == selectedTitle) selectedIsVisible = true;
@@ -795,6 +819,69 @@ namespace QuickCopy
                 SelectRecord(firstButton.CommandParameter as string);
             else if (firstButton == null)
                 ClearRecordDisplay();
+        }
+
+        private IEnumerable<DemoRecord> GetOrderedRecords(string category)
+        {
+            var includedTitles = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            foreach (var title in recordOrder)
+            {
+                DemoRecord record;
+                if (demoRecords.TryGetValue(title, out record) && record.Category == category)
+                {
+                    includedTitles.Add(title);
+                    yield return record;
+                }
+            }
+
+            foreach (var record in demoRecords.Values.Where(record => record.Category == category)
+                .Where(record => !includedTitles.Contains(record.Title))
+                .OrderBy(record => record.Title, StringComparer.CurrentCultureIgnoreCase))
+            {
+                EnsureRecordOrder(record.Title, record.Category);
+                yield return record;
+            }
+        }
+
+        private void RecordTab_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            recordTabDragStart = e.GetPosition(null);
+            var button = sender as Button;
+            draggedRecordTitle = button == null ? null : button.CommandParameter as string;
+        }
+
+        private void RecordTab_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || String.IsNullOrEmpty(draggedRecordTitle)) return;
+            var current = e.GetPosition(null);
+            if (Math.Abs(current.X - recordTabDragStart.X) < SystemParameters.MinimumHorizontalDragDistance
+                && Math.Abs(current.Y - recordTabDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+            DragDrop.DoDragDrop(sender as DependencyObject, draggedRecordTitle, DragDropEffects.Move);
+            draggedRecordTitle = null;
+        }
+
+        private void RecordTab_Drop(object sender, DragEventArgs e)
+        {
+            var target = sender as Button;
+            var sourceTitle = e.Data.GetData(typeof(string)) as string;
+            var targetTitle = target == null ? null : target.CommandParameter as string;
+            if (String.IsNullOrEmpty(sourceTitle) || String.IsNullOrEmpty(targetTitle)
+                || String.Equals(sourceTitle, targetTitle, StringComparison.CurrentCultureIgnoreCase)) return;
+
+            var sourceIndex = recordOrder.FindIndex(title => String.Equals(title, sourceTitle,
+                StringComparison.CurrentCultureIgnoreCase));
+            var targetIndex = recordOrder.FindIndex(title => String.Equals(title, targetTitle,
+                StringComparison.CurrentCultureIgnoreCase));
+            if (sourceIndex < 0 || targetIndex < 0) return;
+
+            var insertAfter = e.GetPosition(target).X > target.ActualWidth / 2;
+            recordOrder.RemoveAt(sourceIndex);
+            if (sourceIndex < targetIndex) targetIndex--;
+            recordOrder.Insert(insertAfter ? targetIndex + 1 : targetIndex, sourceTitle);
+            RenderRecords();
+            SaveRecords();
+            e.Handled = true;
         }
 
         private void RenderClipboardHistory()
@@ -959,6 +1046,7 @@ namespace QuickCopy
             DeleteRecordImage(record);
             demoRecords.Remove(title);
             deletedRecordTitles.Add(title);
+            RemoveRecordFromOrder(title);
             SaveRecords();
             RenderClipboardHistory();
             e.Handled = true;
@@ -1026,6 +1114,11 @@ namespace QuickCopy
                     var category = (string)element.Attribute("name");
                     if (!String.IsNullOrWhiteSpace(category)) EnsureCategoryButton(category);
                 }
+                foreach (var element in document.Root.Elements("recordOrder"))
+                {
+                    var title = (string)element.Attribute("title");
+                    if (!String.IsNullOrWhiteSpace(title)) recordOrder.Add(title);
+                }
                 foreach (var element in document.Root.Elements("deletedCategory"))
                 {
                     var category = (string)element.Attribute("name");
@@ -1044,6 +1137,7 @@ namespace QuickCopy
                     demoRecords[title] = category == ClipboardCategory
                         ? CreateClipboardRecord(title, rawText, imagePath)
                         : ParseRecord(title, category, rawText, imagePath);
+                    EnsureRecordOrder(title, category);
                     EnsureCategoryButton(category);
                 }
                 foreach (var element in document.Root.Elements("deleted"))
@@ -1064,6 +1158,11 @@ namespace QuickCopy
                 Directory.CreateDirectory(Path.GetDirectoryName(recordsPath));
                 var document = new XDocument(new XElement("records",
                     categoryOrder.Select(category => new XElement("category", new XAttribute("name", category))),
+                    recordOrder.Where(title => demoRecords.ContainsKey(title)
+                        && demoRecords[title].IsSaved
+                        && !String.Equals(demoRecords[title].Category, ClipboardCategory,
+                            StringComparison.CurrentCultureIgnoreCase))
+                        .Select(title => new XElement("recordOrder", new XAttribute("title", title))),
                     demoRecords.Values.Where(record => record.IsSaved).Select(record =>
                         new XElement("record",
                             new XAttribute("title", record.Title),
