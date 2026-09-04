@@ -74,6 +74,8 @@ namespace QuickCopy
         private string selectedTitle;
         private string editingOriginalTitle;
         private string editingOriginalImagePath;
+        private Point categoryDragStart;
+        private string draggedCategory;
         private bool isLightTheme;
         private bool isPinned;
         private IntPtr pasteTargetWindow;
@@ -257,7 +259,6 @@ namespace QuickCopy
             EditRecordButton.Visibility = isClipboard ? Visibility.Collapsed : Visibility.Visible;
             DeleteCategoryButton.IsEnabled = !isClipboard;
             DeleteCategoryButton.Visibility = isClipboard ? Visibility.Hidden : Visibility.Visible;
-            UpdateCategoryControls();
             RenderRecords();
         }
 
@@ -285,32 +286,6 @@ namespace QuickCopy
             deletedCategories.Add(selectedCategory);
             RemoveCategoryButton(selectedCategory);
             SelectFirstCategory();
-            SaveRecords();
-        }
-
-        private void MoveCategoryUp_Click(object sender, RoutedEventArgs e)
-        {
-            MoveSelectedCategory(-1);
-        }
-
-        private void MoveCategoryDown_Click(object sender, RoutedEventArgs e)
-        {
-            MoveSelectedCategory(1);
-        }
-
-        private void MoveSelectedCategory(int direction)
-        {
-            var index = categoryOrder.FindIndex(item => String.Equals(item, selectedCategory,
-                StringComparison.CurrentCultureIgnoreCase));
-            var destination = index + direction;
-            if (index < 0 || destination < 0 || destination >= categoryOrder.Count) return;
-
-            var movedCategory = categoryOrder[index];
-            categoryOrder.RemoveAt(index);
-            categoryOrder.Insert(destination, movedCategory);
-            RenderCategoryButtons();
-            SelectCategoryButton(selectedCategory);
-            UpdateCategoryControls();
             SaveRecords();
         }
 
@@ -642,7 +617,6 @@ namespace QuickCopy
             SaveRecords();
             selectedCategory = category;
             SelectCategoryButton(category);
-            UpdateCategoryControls();
             SearchBox.Clear();
             RenderRecords();
             SelectRecord(title);
@@ -699,8 +673,56 @@ namespace QuickCopy
                         ? "Selected" : null
                 };
                 button.Click += Category_Click;
+                button.AllowDrop = true;
+                button.Cursor = Cursors.SizeAll;
+                button.ToolTip = "拖拽调整顺序";
+                button.PreviewMouseLeftButtonDown += Category_PreviewMouseLeftButtonDown;
+                button.PreviewMouseMove += Category_PreviewMouseMove;
+                button.Drop += Category_Drop;
                 CategoriesPanel.Children.Add(button);
             }
+        }
+
+        private void Category_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            categoryDragStart = e.GetPosition(null);
+            var button = sender as Button;
+            draggedCategory = button == null ? null : button.Content as string;
+        }
+
+        private void Category_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || String.IsNullOrEmpty(draggedCategory)) return;
+            var current = e.GetPosition(null);
+            if (Math.Abs(current.X - categoryDragStart.X) < SystemParameters.MinimumHorizontalDragDistance
+                && Math.Abs(current.Y - categoryDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+            DragDrop.DoDragDrop(sender as DependencyObject, draggedCategory, DragDropEffects.Move);
+            draggedCategory = null;
+        }
+
+        private void Category_Drop(object sender, DragEventArgs e)
+        {
+            var target = sender as Button;
+            var sourceCategory = e.Data.GetData(typeof(string)) as string;
+            var targetCategory = target == null ? null : target.Content as string;
+            if (String.IsNullOrEmpty(sourceCategory) || String.IsNullOrEmpty(targetCategory)
+                || String.Equals(sourceCategory, targetCategory, StringComparison.CurrentCultureIgnoreCase)) return;
+
+            var sourceIndex = categoryOrder.FindIndex(category => String.Equals(category, sourceCategory,
+                StringComparison.CurrentCultureIgnoreCase));
+            var targetIndex = categoryOrder.FindIndex(category => String.Equals(category, targetCategory,
+                StringComparison.CurrentCultureIgnoreCase));
+            if (sourceIndex < 0 || targetIndex < 0) return;
+
+            var insertAfter = e.GetPosition(target).Y > target.ActualHeight / 2;
+            categoryOrder.RemoveAt(sourceIndex);
+            if (sourceIndex < targetIndex) targetIndex--;
+            categoryOrder.Insert(insertAfter ? targetIndex + 1 : targetIndex, sourceCategory);
+            RenderCategoryButtons();
+            SelectCategoryButton(selectedCategory);
+            SaveRecords();
+            e.Handled = true;
         }
 
         private void RefreshEditorCategories()
@@ -713,17 +735,6 @@ namespace QuickCopy
             EditorCategory.Text = selected;
         }
 
-        private void UpdateCategoryControls()
-        {
-            var index = categoryOrder.FindIndex(category => String.Equals(category, selectedCategory,
-                StringComparison.CurrentCultureIgnoreCase));
-            var canMove = index >= 0;
-            MoveCategoryUpButton.IsEnabled = canMove && index > 0;
-            MoveCategoryDownButton.IsEnabled = canMove && index < categoryOrder.Count - 1;
-            MoveCategoryUpButton.Visibility = canMove ? Visibility.Visible : Visibility.Hidden;
-            MoveCategoryDownButton.Visibility = canMove ? Visibility.Visible : Visibility.Hidden;
-        }
-
         private void SelectFirstCategory()
         {
             var first = CategoriesPanel.Children.OfType<Button>().FirstOrDefault();
@@ -734,7 +745,6 @@ namespace QuickCopy
                 ClearRecordDisplay();
                 DeleteCategoryButton.IsEnabled = false;
                 DeleteCategoryButton.Visibility = Visibility.Hidden;
-                UpdateCategoryControls();
                 return;
             }
             selectedCategory = first.Content.ToString();
@@ -742,7 +752,6 @@ namespace QuickCopy
             DeleteCategoryButton.IsEnabled = !String.Equals(selectedCategory, ClipboardCategory,
                 StringComparison.CurrentCultureIgnoreCase);
             DeleteCategoryButton.Visibility = Visibility.Visible;
-            UpdateCategoryControls();
             RenderRecords();
         }
 

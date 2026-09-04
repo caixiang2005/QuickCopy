@@ -53,6 +53,67 @@
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         </Style>
+
+        <Style x:Key="CategoryComboBoxItem" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource HoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SelectedBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CategoryComboBox" TargetType="ComboBox">
+            <Setter Property="ItemContainerStyle" Value="{StaticResource CategoryComboBoxItem}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="30" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.ColumnSpan="2" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" />
+                            <TextBox x:Name="PART_EditableTextBox" Grid.Column="0" Margin="7,0,0,0"
+                                     BorderThickness="0" Background="Transparent" Foreground="{TemplateBinding Foreground}"
+                                     CaretBrush="#49A078" VerticalContentAlignment="Center"
+                                     Text="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <ToggleButton Grid.Column="1" Focusable="False" Background="Transparent" BorderThickness="0"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                <TextBlock Text="▼" FontSize="10" Foreground="{DynamicResource MutedBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" PopupAnimation="Fade"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}">
+                                <Border Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1" MaxHeight="180">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="True">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border x:Name="WindowShell" Background="{DynamicResource WindowBrush}"
@@ -97,20 +158,11 @@
                                     Style="{StaticResource NavButton}" Click="Category_Click" />
                             <Grid Margin="10,0,0,7">
                                 <TextBlock Text="标签" FontSize="11" Foreground="#777F88" VerticalAlignment="Center" />
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,0">
-                                    <Button x:Name="MoveCategoryUpButton" Content="▲" Width="20" Height="24"
-                                            FontSize="9" Background="Transparent" Foreground="{DynamicResource MutedBrush}"
-                                            BorderThickness="0" Cursor="Hand" ToolTip="上移当前标签"
-                                            Click="MoveCategoryUp_Click" />
-                                    <Button x:Name="MoveCategoryDownButton" Content="▼" Width="20" Height="24"
-                                            FontSize="9" Background="Transparent" Foreground="{DynamicResource MutedBrush}"
-                                            BorderThickness="0" Cursor="Hand" ToolTip="下移当前标签"
-                                            Click="MoveCategoryDown_Click" />
-                                    <Button x:Name="DeleteCategoryButton" Content="×" Width="20" Height="24"
-                                            FontSize="15" Background="Transparent" Foreground="{DynamicResource MutedBrush}"
-                                            BorderThickness="0" Cursor="Hand" ToolTip="删除当前标签"
-                                            Click="DeleteCategory_Click" />
-                                </StackPanel>
+                                <Button x:Name="DeleteCategoryButton" Content="×" Width="24" Height="24"
+                                        HorizontalAlignment="Right" Margin="0,0,4,0" FontSize="15"
+                                        Background="Transparent" Foreground="{DynamicResource MutedBrush}"
+                                        BorderThickness="0" Cursor="Hand" ToolTip="删除当前标签"
+                                        Click="DeleteCategory_Click" />
                             </Grid>
                             <StackPanel x:Name="CategoriesPanel">
                             </StackPanel>
@@ -286,7 +338,8 @@
                                 <ComboBox x:Name="EditorCategory" Text="其他" IsEditable="True" IsTextSearchEnabled="False"
                                           Height="38" Padding="7,0" VerticalContentAlignment="Center"
                                           Background="{DynamicResource InputBrush}" Foreground="{DynamicResource TextBrush}"
-                                          BorderBrush="{DynamicResource BorderBrush}" FontSize="13" />
+                                          BorderBrush="{DynamicResource BorderBrush}" FontSize="13"
+                                          Style="{StaticResource CategoryComboBox}" />
                             </StackPanel>
                         </Grid>
                         <TextBlock Grid.Row="2" Text="文本内容" FontSize="11"
