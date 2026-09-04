@@ -640,7 +640,6 @@ namespace QuickCopy
         private void EnsureCategoryButton(string category)
         {
             if (String.Equals(category, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)) return;
-            if (deletedCategories.Contains(category)) return;
             foreach (var child in CategoriesPanel.Children)
             {
                 var existing = child as Button;

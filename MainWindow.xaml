@@ -104,11 +104,6 @@
                                         Click="DeleteCategory_Click" />
                             </Grid>
                             <StackPanel x:Name="CategoriesPanel">
-                                <Button Content="常用" Style="{StaticResource NavButton}" Click="Category_Click" />
-                                <Button Content="服务器" Style="{StaticResource NavButton}" Click="Category_Click" />
-                                <Button Content="内部系统" Tag="Selected" Style="{StaticResource NavButton}" Click="Category_Click" />
-                                <Button Content="代码仓库" Style="{StaticResource NavButton}" Click="Category_Click" />
-                                <Button Content="其他" Style="{StaticResource NavButton}" Click="Category_Click" />
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
