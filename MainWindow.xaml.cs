@@ -65,6 +65,7 @@ namespace QuickCopy
         private readonly Dictionary<string, DemoRecord> demoRecords;
         private readonly HashSet<string> deletedRecordTitles = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
         private readonly HashSet<string> deletedCategories = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+        private readonly List<string> categoryOrder = new List<string>();
         private readonly string recordsPath;
         private readonly string clipboardImagesFolder;
         private readonly DispatcherTimer copyToastTimer;
@@ -228,6 +229,7 @@ namespace QuickCopy
             EditorHeading.Text = "新增记录";
             EditorTitle.Clear();
             EditorRawText.Clear();
+            RefreshEditorCategories();
             EditorCategory.Text = "其他";
             EditorImage.Source = null;
             EditorImagePreview.Visibility = Visibility.Collapsed;
@@ -255,6 +257,7 @@ namespace QuickCopy
             EditRecordButton.Visibility = isClipboard ? Visibility.Collapsed : Visibility.Visible;
             DeleteCategoryButton.IsEnabled = !isClipboard;
             DeleteCategoryButton.Visibility = isClipboard ? Visibility.Hidden : Visibility.Visible;
+            UpdateCategoryControls();
             RenderRecords();
         }
 
@@ -282,6 +285,32 @@ namespace QuickCopy
             deletedCategories.Add(selectedCategory);
             RemoveCategoryButton(selectedCategory);
             SelectFirstCategory();
+            SaveRecords();
+        }
+
+        private void MoveCategoryUp_Click(object sender, RoutedEventArgs e)
+        {
+            MoveSelectedCategory(-1);
+        }
+
+        private void MoveCategoryDown_Click(object sender, RoutedEventArgs e)
+        {
+            MoveSelectedCategory(1);
+        }
+
+        private void MoveSelectedCategory(int direction)
+        {
+            var index = categoryOrder.FindIndex(item => String.Equals(item, selectedCategory,
+                StringComparison.CurrentCultureIgnoreCase));
+            var destination = index + direction;
+            if (index < 0 || destination < 0 || destination >= categoryOrder.Count) return;
+
+            var movedCategory = categoryOrder[index];
+            categoryOrder.RemoveAt(index);
+            categoryOrder.Insert(destination, movedCategory);
+            RenderCategoryButtons();
+            SelectCategoryButton(selectedCategory);
+            UpdateCategoryControls();
             SaveRecords();
         }
 
@@ -428,6 +457,7 @@ namespace QuickCopy
             editingOriginalImagePath = record.ImagePath;
             EditorHeading.Text = "编辑记录";
             EditorTitle.Text = record.Title;
+            RefreshEditorCategories();
             EditorCategory.Text = record.Category;
             EditorRawText.Text = record.RawText;
             EditorTitle.ToolTip = null;
@@ -608,10 +638,11 @@ namespace QuickCopy
             deletedCategories.Remove(category);
             deletedRecordTitles.Remove(title);
             demoRecords[title] = record;
-            SaveRecords();
             EnsureCategoryButton(category);
+            SaveRecords();
             selectedCategory = category;
             SelectCategoryButton(category);
+            UpdateCategoryControls();
             SearchBox.Clear();
             RenderRecords();
             SelectRecord(title);
@@ -640,30 +671,57 @@ namespace QuickCopy
         private void EnsureCategoryButton(string category)
         {
             if (String.Equals(category, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)) return;
-            foreach (var child in CategoriesPanel.Children)
-            {
-                var existing = child as Button;
-                if (existing != null && existing.Content.ToString() == category) return;
-            }
-
-            var button = new Button
-            {
-                Content = category,
-                Style = (Style)FindResource("NavButton")
-            };
-            button.Click += Category_Click;
-            CategoriesPanel.Children.Add(button);
+            if (!categoryOrder.Any(existing => String.Equals(existing, category,
+                StringComparison.CurrentCultureIgnoreCase)))
+                categoryOrder.Add(category);
+            RenderCategoryButtons();
+            RefreshEditorCategories();
         }
 
         private void RemoveCategoryButton(string category)
         {
-            Button target = null;
-            foreach (var child in CategoriesPanel.Children)
+            categoryOrder.RemoveAll(existing => String.Equals(existing, category,
+                StringComparison.CurrentCultureIgnoreCase));
+            RenderCategoryButtons();
+            RefreshEditorCategories();
+        }
+
+        private void RenderCategoryButtons()
+        {
+            CategoriesPanel.Children.Clear();
+            foreach (var category in categoryOrder)
             {
-                var button = child as Button;
-                if (button != null && button.Content.ToString() == category) target = button;
+                var button = new Button
+                {
+                    Content = category,
+                    Style = (Style)FindResource("NavButton"),
+                    Tag = String.Equals(category, selectedCategory, StringComparison.CurrentCultureIgnoreCase)
+                        ? "Selected" : null
+                };
+                button.Click += Category_Click;
+                CategoriesPanel.Children.Add(button);
             }
-            if (target != null) CategoriesPanel.Children.Remove(target);
+        }
+
+        private void RefreshEditorCategories()
+        {
+            if (EditorCategory == null) return;
+            var selected = EditorCategory.Text;
+            EditorCategory.Items.Clear();
+            foreach (var category in categoryOrder)
+                EditorCategory.Items.Add(category);
+            EditorCategory.Text = selected;
+        }
+
+        private void UpdateCategoryControls()
+        {
+            var index = categoryOrder.FindIndex(category => String.Equals(category, selectedCategory,
+                StringComparison.CurrentCultureIgnoreCase));
+            var canMove = index >= 0;
+            MoveCategoryUpButton.IsEnabled = canMove && index > 0;
+            MoveCategoryDownButton.IsEnabled = canMove && index < categoryOrder.Count - 1;
+            MoveCategoryUpButton.Visibility = canMove ? Visibility.Visible : Visibility.Hidden;
+            MoveCategoryDownButton.Visibility = canMove ? Visibility.Visible : Visibility.Hidden;
         }
 
         private void SelectFirstCategory()
@@ -676,6 +734,7 @@ namespace QuickCopy
                 ClearRecordDisplay();
                 DeleteCategoryButton.IsEnabled = false;
                 DeleteCategoryButton.Visibility = Visibility.Hidden;
+                UpdateCategoryControls();
                 return;
             }
             selectedCategory = first.Content.ToString();
@@ -683,6 +742,7 @@ namespace QuickCopy
             DeleteCategoryButton.IsEnabled = !String.Equals(selectedCategory, ClipboardCategory,
                 StringComparison.CurrentCultureIgnoreCase);
             DeleteCategoryButton.Visibility = Visibility.Visible;
+            UpdateCategoryControls();
             RenderRecords();
         }
 
@@ -952,6 +1012,11 @@ namespace QuickCopy
             {
                 if (!File.Exists(recordsPath)) return;
                 var document = XDocument.Load(recordsPath);
+                foreach (var element in document.Root.Elements("category"))
+                {
+                    var category = (string)element.Attribute("name");
+                    if (!String.IsNullOrWhiteSpace(category)) EnsureCategoryButton(category);
+                }
                 foreach (var element in document.Root.Elements("deletedCategory"))
                 {
                     var category = (string)element.Attribute("name");
@@ -989,6 +1054,7 @@ namespace QuickCopy
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(recordsPath));
                 var document = new XDocument(new XElement("records",
+                    categoryOrder.Select(category => new XElement("category", new XAttribute("name", category))),
                     demoRecords.Values.Where(record => record.IsSaved).Select(record =>
                         new XElement("record",
                             new XAttribute("title", record.Title),

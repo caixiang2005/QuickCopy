@@ -97,11 +97,20 @@
                                     Style="{StaticResource NavButton}" Click="Category_Click" />
                             <Grid Margin="10,0,0,7">
                                 <TextBlock Text="标签" FontSize="11" Foreground="#777F88" VerticalAlignment="Center" />
-                                <Button x:Name="DeleteCategoryButton" Content="×" Width="24" Height="24"
-                                        HorizontalAlignment="Right" Margin="0,0,4,0" FontSize="15"
-                                        Background="Transparent" Foreground="{DynamicResource MutedBrush}"
-                                        BorderThickness="0" Cursor="Hand" ToolTip="删除当前标签"
-                                        Click="DeleteCategory_Click" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,0">
+                                    <Button x:Name="MoveCategoryUpButton" Content="▲" Width="20" Height="24"
+                                            FontSize="9" Background="Transparent" Foreground="{DynamicResource MutedBrush}"
+                                            BorderThickness="0" Cursor="Hand" ToolTip="上移当前标签"
+                                            Click="MoveCategoryUp_Click" />
+                                    <Button x:Name="MoveCategoryDownButton" Content="▼" Width="20" Height="24"
+                                            FontSize="9" Background="Transparent" Foreground="{DynamicResource MutedBrush}"
+                                            BorderThickness="0" Cursor="Hand" ToolTip="下移当前标签"
+                                            Click="MoveCategoryDown_Click" />
+                                    <Button x:Name="DeleteCategoryButton" Content="×" Width="20" Height="24"
+                                            FontSize="15" Background="Transparent" Foreground="{DynamicResource MutedBrush}"
+                                            BorderThickness="0" Cursor="Hand" ToolTip="删除当前标签"
+                                            Click="DeleteCategory_Click" />
+                                </StackPanel>
                             </Grid>
                             <StackPanel x:Name="CategoriesPanel">
                             </StackPanel>
@@ -274,9 +283,10 @@
                             </StackPanel>
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="标签" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="1,0,0,7" />
-                                <TextBox x:Name="EditorCategory" Text="其他" Height="38" Padding="10,0" VerticalContentAlignment="Center"
-                                         Background="{DynamicResource InputBrush}" Foreground="{DynamicResource TextBrush}"
-                                         BorderBrush="{DynamicResource BorderBrush}" CaretBrush="#49A078" FontSize="13" />
+                                <ComboBox x:Name="EditorCategory" Text="其他" IsEditable="True" IsTextSearchEnabled="False"
+                                          Height="38" Padding="7,0" VerticalContentAlignment="Center"
+                                          Background="{DynamicResource InputBrush}" Foreground="{DynamicResource TextBrush}"
+                                          BorderBrush="{DynamicResource BorderBrush}" FontSize="13" />
                             </StackPanel>
                         </Grid>
                         <TextBlock Grid.Row="2" Text="文本内容" FontSize="11"
