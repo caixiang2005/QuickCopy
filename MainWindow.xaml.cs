@@ -634,11 +634,18 @@ namespace QuickCopy
         private void EnsureCategoryButton(string category)
         {
             if (String.Equals(category, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)) return;
+            AddCategoryToOrder(category);
+            RenderCategoryButtons();
+            RefreshEditorCategories();
+        }
+
+        private void AddCategoryToOrder(string category)
+        {
+            if (String.IsNullOrWhiteSpace(category)
+                || String.Equals(category, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)) return;
             if (!categoryOrder.Any(existing => String.Equals(existing, category,
                 StringComparison.CurrentCultureIgnoreCase)))
                 categoryOrder.Add(category);
-            RenderCategoryButtons();
-            RefreshEditorCategories();
         }
 
         private void RemoveCategoryButton(string category)
@@ -1095,7 +1102,7 @@ namespace QuickCopy
                 foreach (var element in document.Root.Elements("category"))
                 {
                     var category = (string)element.Attribute("name");
-                    if (!String.IsNullOrWhiteSpace(category)) EnsureCategoryButton(category);
+                    AddCategoryToOrder(category);
                 }
                 foreach (var element in document.Root.Elements("recordOrder"))
                 {
@@ -1113,12 +1120,15 @@ namespace QuickCopy
                         ? CreateClipboardRecord(title, rawText, imagePath)
                         : ParseRecord(title, category, rawText, imagePath);
                     EnsureRecordOrder(title, category);
-                    EnsureCategoryButton(category);
+                    AddCategoryToOrder(category);
                 }
+                RenderCategoryButtons();
+                RefreshEditorCategories();
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                recordsLoadError = "无法读取已有数据。原文件未被修改，请检查后重试：" + recordsPath;
+                recordsLoadError = "无法读取已有数据。原文件未被修改，请检查后重试：" + recordsPath
+                    + Environment.NewLine + exception.Message;
             }
         }
 
