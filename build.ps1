@@ -12,6 +12,7 @@ New-Item -ItemType Directory -Force -Path $obj, $bin | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
 $release = Join-Path $bin 'Release'
+$rootExecutable = Join-Path $project 'QuickCopy.exe'
 $extraFiles = @(
     'mscorlib.dll', 'normidna.nlp', 'normnfc.nlp', 'normnfd.nlp',
     'normnfkc.nlp', 'normnfkd.nlp'
@@ -28,6 +29,13 @@ if (Test-Path -LiteralPath $cultureFolder) {
         throw "Unexpected build output path: $resolvedCulture"
     }
     Remove-Item -LiteralPath $resolvedCulture -Recurse -Force
+}
+
+try {
+    Copy-Item -LiteralPath (Join-Path $release 'QuickCopy.exe') -Destination $rootExecutable -Force
+}
+catch [System.IO.IOException] {
+    Write-Warning "QuickCopy.exe is running, so the root executable was not updated. Close it and run this script again."
 }
 
 Write-Host "Built: $bin\Release\QuickCopy.exe"
