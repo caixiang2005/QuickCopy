@@ -84,11 +84,12 @@ namespace QuickCopy
         private IntPtr pasteTargetWindow;
         private NativeRect pasteTargetCaret;
         private bool hasPasteTargetCaret;
+        private string recordsLoadError;
 
         public MainWindow()
         {
             InitializeComponent();
-            demoRecords = CreateDemoRecords();
+            demoRecords = new Dictionary<string, DemoRecord>(StringComparer.CurrentCultureIgnoreCase);
             recordsPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "QuickCopy", "records.xml");
@@ -123,6 +124,8 @@ namespace QuickCopy
             RenderRecords();
             PlayEntrance();
             Keyboard.Focus(WindowShell);
+            if (!String.IsNullOrEmpty(recordsLoadError))
+                MessageBox.Show(this, recordsLoadError, "QuickCopy", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         private void MainWindow_SourceInitialized(object sender, EventArgs e)
@@ -279,10 +282,7 @@ namespace QuickCopy
 
             foreach (var record in records)
             {
-                if (!String.IsNullOrEmpty(record.ImagePath) && File.Exists(record.ImagePath))
-                {
-                    try { File.Delete(record.ImagePath); } catch { }
-                }
+                DeleteRecordImage(record);
                 deletedRecordTitles.Add(record.Title);
                 demoRecords.Remove(record.Title);
                 RemoveRecordFromOrder(record.Title);
@@ -310,10 +310,7 @@ namespace QuickCopy
                 MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
             if (result != MessageBoxResult.Yes) return;
 
-            if (!String.IsNullOrEmpty(record.ImagePath) && File.Exists(record.ImagePath))
-            {
-                try { File.Delete(record.ImagePath); } catch { }
-            }
+            DeleteRecordImage(record);
             deletedRecordTitles.Add(record.Title);
             demoRecords.Remove(record.Title);
             RemoveRecordFromOrder(record.Title);
@@ -490,12 +487,6 @@ namespace QuickCopy
                 succeeded ? "#7ED0A4" : "#E58A8A"));
             CopyToast.Visibility = Visibility.Visible;
             copyToastTimer.Start();
-        }
-
-        private void PlaceholderButton_Click(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            if (button != null) button.Focus();
         }
 
         private void ThemeButton_Click(object sender, RoutedEventArgs e)
@@ -1109,6 +1100,8 @@ namespace QuickCopy
             {
                 if (!File.Exists(recordsPath)) return;
                 var document = XDocument.Load(recordsPath);
+                if (document.Root == null || document.Root.Name != "records")
+                    throw new InvalidDataException("记录文件格式不正确。");
                 foreach (var element in document.Root.Elements("category"))
                 {
                     var category = (string)element.Attribute("name");
@@ -1148,14 +1141,20 @@ namespace QuickCopy
                     demoRecords.Remove(title);
                 }
             }
-            catch { }
+            catch (Exception)
+            {
+                recordsLoadError = "无法读取已有数据。原文件未被修改，请检查后重试：" + recordsPath;
+            }
         }
 
         private void SaveRecords()
         {
+            if (!String.IsNullOrEmpty(recordsLoadError)) return;
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(recordsPath));
+                var temporaryPath = recordsPath + ".tmp";
+                var backupPath = recordsPath + ".bak";
                 var document = new XDocument(new XElement("records",
                     categoryOrder.Select(category => new XElement("category", new XAttribute("name", category))),
                     recordOrder.Where(title => demoRecords.ContainsKey(title)
@@ -1172,20 +1171,17 @@ namespace QuickCopy
                     deletedRecordTitles.Select(title => new XElement("deleted", new XAttribute("title", title)))));
                 foreach (var category in deletedCategories)
                     document.Root.Add(new XElement("deletedCategory", new XAttribute("name", category)));
-                document.Save(recordsPath);
+                document.Save(temporaryPath);
+                if (File.Exists(recordsPath))
+                    File.Replace(temporaryPath, recordsPath, backupPath, true);
+                else
+                    File.Move(temporaryPath, recordsPath);
             }
-            catch { }
-        }
-
-        private static Dictionary<string, DemoRecord> CreateDemoRecords()
-        {
-            return new Dictionary<string, DemoRecord>(StringComparer.CurrentCultureIgnoreCase);
-        }
-
-        private static DemoRecord ParseDemoRecord(string title, string category, string rawText)
-        {
-            var parsed = ParseRecord(title, category, rawText);
-            return new DemoRecord(parsed.Title, parsed.Category, parsed.Fields, rawText, null, false);
+            catch (Exception)
+            {
+                recordsLoadError = "无法保存数据。原文件未被覆盖，请检查后重试：" + recordsPath;
+                MessageBox.Show(this, recordsLoadError, "QuickCopy", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private static BitmapSource LoadBitmap(string path)

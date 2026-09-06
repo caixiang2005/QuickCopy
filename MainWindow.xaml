@@ -170,36 +170,17 @@
                     </ScrollViewer>
 
                     <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Button x:Name="ThemeButton" Style="{StaticResource IconButton}" ToolTip="切换亮色主题" Click="ThemeButton_Click">
-                                <Viewbox Width="12" Height="12">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                              StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              Data="M12,3 V5 M12,19 V21 M3,12 H5 M19,12 H21 M5.64,5.64 L7.05,7.05 M16.95,16.95 L18.36,18.36 M18.36,5.64 L16.95,7.05 M7.05,16.95 L5.64,18.36 M12,8 A4,4 0 1 1 12,16 A4,4 0 1 1 12,8" />
-                                    </Canvas>
-                                </Viewbox>
-                            </Button>
-                            <Button Style="{StaticResource IconButton}" ToolTip="设置（暂未开放）" Click="PlaceholderButton_Click">
-                                <Viewbox Width="12" Height="12">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                              StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              StrokeLineJoin="Round"
-                                              Data="M12,8.5 A3.5,3.5 0 1 1 12,15.5 A3.5,3.5 0 1 1 12,8.5 M19.4,15 A1.7,1.7 0 0 0 19.74,16.88 L19.8,16.94 A2,2 0 0 1 16.97,19.77 L16.91,19.71 A1.7,1.7 0 0 0 15,19.4 A1.7,1.7 0 0 0 14,21 V21.1 A2,2 0 0 1 10,21.1 V21 A1.7,1.7 0 0 0 9,19.4 A1.7,1.7 0 0 0 7.09,19.71 L7.03,19.77 A2,2 0 0 1 4.2,16.94 L4.26,16.88 A1.7,1.7 0 0 0 4.6,15 A1.7,1.7 0 0 0 3,14 H2.9 A2,2 0 0 1 2.9,10 H3 A1.7,1.7 0 0 0 4.6,9 A1.7,1.7 0 0 0 4.26,7.12 L4.2,7.06 A2,2 0 0 1 7.03,4.23 L7.09,4.29 A1.7,1.7 0 0 0 9,4.6 A1.7,1.7 0 0 0 10,3 V2.9 A2,2 0 0 1 14,2.9 V3 A1.7,1.7 0 0 0 15,4.6 A1.7,1.7 0 0 0 16.91,4.29 L16.97,4.23 A2,2 0 0 1 19.8,7.06 L19.74,7.12 A1.7,1.7 0 0 0 19.4,9 A1.7,1.7 0 0 0 21,10 H21.1 A2,2 0 0 1 21.1,14 H21 A1.7,1.7 0 0 0 19.4,15 Z" />
-                                    </Canvas>
-                                </Viewbox>
-                            </Button>
-                            <Button Style="{StaticResource IconButton}" ToolTip="下载更新（暂未开放）" Click="PlaceholderButton_Click" Margin="0">
-                                <Viewbox Width="12" Height="12">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                              StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              StrokeLineJoin="Round" Data="M12,3 V15 M7,10 L12,15 L17,10 M5,21 H19 A2,2 0 0 0 21,19 V17 M3,17 V19 A2,2 0 0 0 5,21" />
-                                    </Canvas>
-                                </Viewbox>
-                            </Button>
-                        </StackPanel>
+                        <Button x:Name="ThemeButton" Style="{StaticResource IconButton}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                ToolTip="切换亮色主题" Click="ThemeButton_Click">
+                            <Viewbox Width="12" Height="12">
+                                <Canvas Width="24" Height="24">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Data="M12,3 V5 M12,19 V21 M3,12 H5 M19,12 H21 M5.64,5.64 L7.05,7.05 M16.95,16.95 L18.36,18.36 M18.36,5.64 L16.95,7.05 M7.05,16.95 L5.64,18.36 M12,8 A4,4 0 1 1 12,16 A4,4 0 1 1 12,8" />
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
                     </Border>
                 </Grid>
             </Border>
