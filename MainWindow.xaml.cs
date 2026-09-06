@@ -63,8 +63,6 @@ namespace QuickCopy
 
         private readonly DispatcherTimer clipboardMonitorTimer;
         private readonly Dictionary<string, DemoRecord> demoRecords;
-        private readonly HashSet<string> deletedRecordTitles = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
-        private readonly HashSet<string> deletedCategories = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
         private readonly List<string> categoryOrder = new List<string>();
         private readonly List<string> recordOrder = new List<string>();
         private readonly string recordsPath;
@@ -95,7 +93,6 @@ namespace QuickCopy
                 "QuickCopy", "records.xml");
             clipboardImagesFolder = Path.Combine(Path.GetDirectoryName(recordsPath), "clipboard-images");
             LoadSavedRecords();
-            deletedCategories.Remove(ClipboardCategory);
             lastClipboardSequence = GetClipboardSequenceNumber();
             clipboardMonitorTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
             clipboardMonitorTimer.Tick += ClipboardMonitorTimer_Tick;
@@ -283,11 +280,9 @@ namespace QuickCopy
             foreach (var record in records)
             {
                 DeleteRecordImage(record);
-                deletedRecordTitles.Add(record.Title);
                 demoRecords.Remove(record.Title);
                 RemoveRecordFromOrder(record.Title);
             }
-            deletedCategories.Add(selectedCategory);
             RemoveCategoryButton(selectedCategory);
             SelectFirstCategory();
             SaveRecords();
@@ -311,7 +306,6 @@ namespace QuickCopy
             if (result != MessageBoxResult.Yes) return;
 
             DeleteRecordImage(record);
-            deletedRecordTitles.Add(record.Title);
             demoRecords.Remove(record.Title);
             RemoveRecordFromOrder(record.Title);
             SaveRecords();
@@ -604,11 +598,8 @@ namespace QuickCopy
                 StringComparison.CurrentCultureIgnoreCase))
             {
                 demoRecords.Remove(editingOriginalTitle);
-                deletedRecordTitles.Add(editingOriginalTitle);
                 RemoveRecordFromOrder(editingOriginalTitle);
             }
-            deletedCategories.Remove(category);
-            deletedRecordTitles.Remove(title);
             demoRecords[title] = record;
             EnsureRecordOrder(title, category);
             EnsureCategoryButton(category);
@@ -1036,7 +1027,6 @@ namespace QuickCopy
             if (String.IsNullOrEmpty(title) || !demoRecords.TryGetValue(title, out record)) return;
             DeleteRecordImage(record);
             demoRecords.Remove(title);
-            deletedRecordTitles.Add(title);
             RemoveRecordFromOrder(title);
             SaveRecords();
             RenderClipboardHistory();
@@ -1112,14 +1102,6 @@ namespace QuickCopy
                     var title = (string)element.Attribute("title");
                     if (!String.IsNullOrWhiteSpace(title)) recordOrder.Add(title);
                 }
-                foreach (var element in document.Root.Elements("deletedCategory"))
-                {
-                    var category = (string)element.Attribute("name");
-                    if (String.IsNullOrWhiteSpace(category)) continue;
-                    deletedCategories.Add(category);
-                    RemoveCategoryButton(category);
-                }
-                deletedCategories.Remove(ClipboardCategory);
                 foreach (var element in document.Root.Elements("record"))
                 {
                     var title = (string)element.Attribute("title");
@@ -1132,13 +1114,6 @@ namespace QuickCopy
                         : ParseRecord(title, category, rawText, imagePath);
                     EnsureRecordOrder(title, category);
                     EnsureCategoryButton(category);
-                }
-                foreach (var element in document.Root.Elements("deleted"))
-                {
-                    var title = (string)element.Attribute("title");
-                    if (String.IsNullOrWhiteSpace(title)) continue;
-                    deletedRecordTitles.Add(title);
-                    demoRecords.Remove(title);
                 }
             }
             catch (Exception)
@@ -1167,10 +1142,7 @@ namespace QuickCopy
                             new XAttribute("title", record.Title),
                             new XAttribute("category", record.Category),
                             String.IsNullOrEmpty(record.ImagePath) ? null : new XAttribute("image", record.ImagePath),
-                            new XCData(record.RawText))),
-                    deletedRecordTitles.Select(title => new XElement("deleted", new XAttribute("title", title)))));
-                foreach (var category in deletedCategories)
-                    document.Root.Add(new XElement("deletedCategory", new XAttribute("name", category)));
+                            new XCData(record.RawText)))));
                 document.Save(temporaryPath);
                 if (File.Exists(recordsPath))
                     File.Replace(temporaryPath, recordsPath, backupPath, true);
