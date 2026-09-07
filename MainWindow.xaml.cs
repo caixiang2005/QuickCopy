@@ -92,7 +92,6 @@ namespace QuickCopy
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "QuickCopy", "records.xml");
             clipboardImagesFolder = Path.Combine(Path.GetDirectoryName(recordsPath), "clipboard-images");
-            LoadSavedRecords();
             lastClipboardSequence = GetClipboardSequenceNumber();
             clipboardMonitorTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
             clipboardMonitorTimer.Tick += ClipboardMonitorTimer_Tick;
@@ -113,6 +112,7 @@ namespace QuickCopy
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            LoadSavedRecords();
             if (!String.Equals(selectedCategory, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)
                 && !CategoriesPanel.Children.OfType<Button>()
                     .Any(button => String.Equals(button.Content.ToString(), selectedCategory,
