@@ -112,13 +112,7 @@ namespace QuickCopy
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            LoadSavedRecords();
-            if (!String.Equals(selectedCategory, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)
-                && !CategoriesPanel.Children.OfType<Button>()
-                    .Any(button => String.Equals(button.Content.ToString(), selectedCategory,
-                        StringComparison.CurrentCultureIgnoreCase)))
-                SelectFirstCategory();
-            RenderRecords();
+            ReloadSavedRecords();
             PlayEntrance();
             Keyboard.Focus(WindowShell);
             if (!String.IsNullOrEmpty(recordsLoadError))
@@ -166,6 +160,7 @@ namespace QuickCopy
 
         private void ShowAndActivate()
         {
+            ReloadSavedRecords();
             CapturePasteTarget();
             WindowState = WindowState.Normal;
             Width = DefaultWindowWidth;
@@ -177,6 +172,24 @@ namespace QuickCopy
             Topmost = isPinned;
             Keyboard.Focus(WindowShell);
             PlayEntrance();
+        }
+
+        private void ReloadSavedRecords()
+        {
+            demoRecords.Clear();
+            categoryOrder.Clear();
+            recordOrder.Clear();
+            recordsLoadError = null;
+            LoadSavedRecords();
+
+            if (!String.Equals(selectedCategory, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)
+                && !categoryOrder.Any(category => String.Equals(category, selectedCategory,
+                    StringComparison.CurrentCultureIgnoreCase)))
+                selectedCategory = categoryOrder.FirstOrDefault();
+
+            RenderCategoryButtons();
+            RefreshEditorCategories();
+            RenderRecords();
         }
 
         private void PlayEntrance()
