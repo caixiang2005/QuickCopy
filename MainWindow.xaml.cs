@@ -181,6 +181,7 @@ namespace QuickCopy
             recordOrder.Clear();
             recordsLoadError = null;
             LoadSavedRecords();
+            EnsureCategoriesFromRecords();
 
             if (!String.Equals(selectedCategory, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)
                 && !categoryOrder.Any(category => String.Equals(category, selectedCategory,
@@ -671,6 +672,7 @@ namespace QuickCopy
 
         private void RenderCategoryButtons()
         {
+            EnsureCategoriesFromRecords();
             CategoriesPanel.Children.Clear();
             foreach (var category in categoryOrder)
             {
@@ -690,6 +692,18 @@ namespace QuickCopy
                 button.Drop += Category_Drop;
                 CategoriesPanel.Children.Add(button);
             }
+        }
+
+        private void EnsureCategoriesFromRecords()
+        {
+            foreach (var category in demoRecords.Values
+                .Select(record => record.Category)
+                .Where(category => !String.IsNullOrWhiteSpace(category))
+                .Where(category => !String.Equals(category, ClipboardCategory,
+                    StringComparison.CurrentCultureIgnoreCase))
+                .Distinct(StringComparer.CurrentCultureIgnoreCase)
+                .OrderBy(category => category, StringComparer.CurrentCultureIgnoreCase))
+                AddCategoryToOrder(category);
         }
 
         private void Category_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
