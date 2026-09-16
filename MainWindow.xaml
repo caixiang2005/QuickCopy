@@ -200,20 +200,22 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Grid Grid.Row="0">
-                            <Button x:Name="PinButton" Width="24" Height="22" HorizontalAlignment="Left"
-                                    Background="Transparent" Foreground="#949BA5" BorderThickness="0"
-                                    Cursor="Hand" ToolTip="窗口置顶" Click="PinButton_Click">
-                                <Viewbox Width="13" Height="13">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                              StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              StrokeLineJoin="Round" Data="M8,3 H16 M9,3 L9,9 L6,13 H18 L15,9 L15,3 M12,13 V21" />
-                                    </Canvas>
-                                </Viewbox>
-                            </Button>
-                            <Button Content="×" Width="30" Height="22" HorizontalAlignment="Right"
-                                    Background="Transparent" Foreground="#949BA5" BorderThickness="0"
-                                    FontFamily="Microsoft YaHei UI" FontSize="16" Click="Close_Click" ToolTip="隐藏" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button x:Name="PinButton" Width="24" Height="22"
+                                        Background="Transparent" Foreground="#949BA5" BorderThickness="0"
+                                        Cursor="Hand" ToolTip="窗口置顶" Click="PinButton_Click">
+                                    <Viewbox Width="13" Height="13">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                  StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                  StrokeLineJoin="Round" Data="M8,3 H16 M9,3 L9,9 L6,13 H18 L15,9 L15,3 M12,13 V21" />
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                                <Button Content="×" Width="30" Height="22"
+                                        Background="Transparent" Foreground="#949BA5" BorderThickness="0"
+                                        FontFamily="Microsoft YaHei UI" FontSize="16" Click="Close_Click" ToolTip="隐藏" />
+                            </StackPanel>
                         </Grid>
 
                         <Border Grid.Row="1" Height="34" VerticalAlignment="Bottom" Background="{DynamicResource InputBrush}"
