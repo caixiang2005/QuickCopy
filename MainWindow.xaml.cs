@@ -78,6 +78,7 @@ namespace QuickCopy
         private Point recordTabDragStart;
         private string draggedRecordTitle;
         private bool isLightTheme;
+        private bool isWindowPinned;
         private IntPtr pasteTargetWindow;
         private NativeRect pasteTargetCaret;
         private bool hasPasteTargetCaret;
@@ -168,6 +169,8 @@ namespace QuickCopy
             PositionNearCaret();
             Show();
             Activate();
+            Topmost = true;
+            Topmost = isWindowPinned;
             Keyboard.Focus(WindowShell);
             PlayEntrance();
         }
@@ -229,6 +232,15 @@ namespace QuickCopy
         }
 
         private void Close_Click(object sender, RoutedEventArgs e) { HideAnimated(); }
+
+        private void WindowPinButton_Click(object sender, RoutedEventArgs e)
+        {
+            isWindowPinned = !isWindowPinned;
+            Topmost = isWindowPinned;
+            WindowPinButton.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+                isWindowPinned ? "#68C895" : "#949BA5"));
+            WindowPinButton.ToolTip = isWindowPinned ? "取消窗口置顶（连续粘贴）" : "窗口置顶";
+        }
 
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
@@ -1436,9 +1448,12 @@ namespace QuickCopy
 
             copyToastTimer.Stop();
             var target = pasteTargetWindow;
-            Hide();
-            WindowShell.Opacity = 0;
-            pasteTargetWindow = IntPtr.Zero;
+            if (!isWindowPinned)
+            {
+                Hide();
+                WindowShell.Opacity = 0;
+                pasteTargetWindow = IntPtr.Zero;
+            }
             SetForegroundWindow(target);
             var pasteTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
             pasteTimer.Tick += delegate
