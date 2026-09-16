@@ -547,7 +547,7 @@ namespace QuickCopy
                 var overflow = demoRecords.Values
                     .Where(record => record.Category == ClipboardCategory)
                     .OrderByDescending(record => record.IsClipboardPinned)
-                    .ThenByDescending(record => record.Title, StringComparer.Ordinal)
+                    .ThenByDescending(record => record.ClipboardSortKey)
                     .Skip(ClipboardHistoryLimit)
                     .Where(record => !record.IsClipboardPinned)
                     .ToList();
@@ -908,7 +908,7 @@ namespace QuickCopy
                 .Where(record => query.Length == 0 || record.SearchText.IndexOf(query,
                     StringComparison.CurrentCultureIgnoreCase) >= 0)
                 .OrderByDescending(record => record.IsClipboardPinned)
-                .ThenByDescending(record => record.Title, StringComparer.Ordinal);
+                .ThenByDescending(record => record.ClipboardSortKey);
 
             foreach (var record in records)
                 ClipboardPanel.Children.Add(CreateClipboardHistoryRow(record));
@@ -1117,6 +1117,8 @@ namespace QuickCopy
             DemoRecord record;
             if (String.IsNullOrEmpty(title) || !demoRecords.TryGetValue(title, out record)) return;
             record.IsClipboardPinned = !record.IsClipboardPinned;
+            if (!record.IsClipboardPinned)
+                record.ClipboardSortKey = DateTime.UtcNow.Ticks;
             SaveRecords();
             RenderClipboardHistory();
             e.Handled = true;
@@ -1146,10 +1148,27 @@ namespace QuickCopy
         }
 
         private static DemoRecord CreateClipboardRecord(string title, string text, string imagePath = null,
-            bool isClipboardPinned = false)
+            bool isClipboardPinned = false, long clipboardSortKey = 0)
         {
             return new DemoRecord(title, ClipboardCategory,
-                new List<RecordField> { new RecordField("内容", text) }, text, imagePath, true, isClipboardPinned);
+                new List<RecordField> { new RecordField("内容", text) }, text, imagePath, true, isClipboardPinned,
+                clipboardSortKey == 0 ? ParseClipboardSortKey(title) : clipboardSortKey);
+        }
+
+        private static long ParseClipboardSortKey(string title)
+        {
+            const string prefix = "__clipboard_";
+            if (String.IsNullOrEmpty(title) || !title.StartsWith(prefix, StringComparison.Ordinal)) return 0;
+            var separator = title.IndexOf('_', prefix.Length);
+            long ticks;
+            return separator > prefix.Length && Int64.TryParse(title.Substring(prefix.Length, separator - prefix.Length), out ticks)
+                ? ticks : 0;
+        }
+
+        private static long ParseSortKeyAttribute(string value)
+        {
+            long ticks;
+            return Int64.TryParse(value, out ticks) ? ticks : 0;
         }
 
         private static DemoRecord ParseRecord(string title, string category, string rawText, string imagePath = null)
@@ -1200,7 +1219,8 @@ namespace QuickCopy
                     var imagePath = (string)element.Attribute("image");
                     var rawText = element.Value;
                     demoRecords[title] = category == ClipboardCategory
-                        ? CreateClipboardRecord(title, rawText, imagePath, (bool?)element.Attribute("pinned") ?? false)
+                        ? CreateClipboardRecord(title, rawText, imagePath, (bool?)element.Attribute("pinned") ?? false,
+                            ParseSortKeyAttribute((string)element.Attribute("sortKey")))
                         : ParseRecord(title, category, rawText, imagePath);
                     EnsureRecordOrder(title, category);
                     AddCategoryToOrder(category);
@@ -1236,6 +1256,7 @@ namespace QuickCopy
                             new XAttribute("category", record.Category),
                             String.IsNullOrEmpty(record.ImagePath) ? null : new XAttribute("image", record.ImagePath),
                             record.IsClipboardPinned ? new XAttribute("pinned", "true") : null,
+                            record.ClipboardSortKey > 0 ? new XAttribute("sortKey", record.ClipboardSortKey) : null,
                             new XCData(record.RawText)))));
                 document.Save(temporaryPath);
                 if (File.Exists(recordsPath))
@@ -1434,10 +1455,10 @@ namespace QuickCopy
         private sealed class DemoRecord
         {
             public DemoRecord(string title, string category, List<RecordField> fields, string rawText, string imagePath,
-                bool isSaved, bool isClipboardPinned = false)
+                bool isSaved, bool isClipboardPinned = false, long clipboardSortKey = 0)
             {
                 Title = title; Category = category; Fields = fields; RawText = rawText; ImagePath = imagePath;
-                IsSaved = isSaved; IsClipboardPinned = isClipboardPinned;
+                IsSaved = isSaved; IsClipboardPinned = isClipboardPinned; ClipboardSortKey = clipboardSortKey;
             }
             public string Title { get; private set; }
             public string Category { get; private set; }
@@ -1446,6 +1467,7 @@ namespace QuickCopy
             public string ImagePath { get; private set; }
             public bool IsSaved { get; private set; }
             public bool IsClipboardPinned { get; set; }
+            public long ClipboardSortKey { get; set; }
             public string SearchText { get { return String.Join(" ", Title, Category, RawText); } }
         }
 
