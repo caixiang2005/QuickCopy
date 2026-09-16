@@ -78,7 +78,6 @@ namespace QuickCopy
         private Point recordTabDragStart;
         private string draggedRecordTitle;
         private bool isLightTheme;
-        private bool isPinned;
         private IntPtr pasteTargetWindow;
         private NativeRect pasteTargetCaret;
         private bool hasPasteTargetCaret;
@@ -169,8 +168,6 @@ namespace QuickCopy
             PositionNearCaret();
             Show();
             Activate();
-            Topmost = true;
-            Topmost = isPinned;
             Keyboard.Focus(WindowShell);
             PlayEntrance();
         }
@@ -232,17 +229,6 @@ namespace QuickCopy
         }
 
         private void Close_Click(object sender, RoutedEventArgs e) { HideAnimated(); }
-
-        private void PinButton_Click(object sender, RoutedEventArgs e)
-        {
-            isPinned = !isPinned;
-            Topmost = isPinned;
-            if (isPinned)
-                PinButton.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#68C895"));
-            else
-                PinButton.SetResourceReference(Control.ForegroundProperty, "MutedBrush");
-            PinButton.ToolTip = isPinned ? "取消窗口置顶（连续粘贴）" : "窗口置顶";
-        }
 
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
@@ -560,8 +546,10 @@ namespace QuickCopy
                 demoRecords[title] = newRecord;
                 var overflow = demoRecords.Values
                     .Where(record => record.Category == ClipboardCategory)
-                    .OrderByDescending(record => record.Title, StringComparer.Ordinal)
+                    .OrderByDescending(record => record.IsClipboardPinned)
+                    .ThenByDescending(record => record.Title, StringComparer.Ordinal)
                     .Skip(ClipboardHistoryLimit)
+                    .Where(record => !record.IsClipboardPinned)
                     .ToList();
                 foreach (var record in overflow)
                 {
@@ -919,7 +907,8 @@ namespace QuickCopy
                 .Where(record => record.Category == ClipboardCategory)
                 .Where(record => query.Length == 0 || record.SearchText.IndexOf(query,
                     StringComparison.CurrentCultureIgnoreCase) >= 0)
-                .OrderByDescending(record => record.Title, StringComparer.Ordinal);
+                .OrderByDescending(record => record.IsClipboardPinned)
+                .ThenByDescending(record => record.Title, StringComparer.Ordinal);
 
             foreach (var record in records)
                 ClipboardPanel.Children.Add(CreateClipboardHistoryRow(record));
@@ -939,7 +928,8 @@ namespace QuickCopy
             row.SetResourceReference(Border.BorderBrushProperty, "DividerBrush");
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
 
             if (!String.IsNullOrEmpty(record.ImagePath))
             {
@@ -990,7 +980,41 @@ namespace QuickCopy
                 Visibility = Visibility.Collapsed
             };
             Grid.SetColumn(status, 1);
+            Grid.SetColumnSpan(status, 2);
             grid.Children.Add(status);
+
+            var pinButton = new Button
+            {
+                Width = 26,
+                Height = 26,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                FontFamily = new FontFamily("Segoe UI Symbol"),
+                FontSize = 15,
+                Cursor = Cursors.Hand,
+                ToolTip = record.IsClipboardPinned ? "取消置顶" : "置顶",
+                Tag = record.Title
+            };
+            var pinViewbox = new Viewbox { Width = 13, Height = 13 };
+            var pinCanvas = new Canvas { Width = 24, Height = 24 };
+            pinCanvas.Children.Add(new System.Windows.Shapes.Path
+            {
+                Stroke = record.IsClipboardPinned
+                    ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#68C895"))
+                    : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#949BA5")),
+                StrokeThickness = 1.8,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                StrokeLineJoin = PenLineJoin.Round,
+                Data = Geometry.Parse("M8,3 H16 M9,3 L9,9 L6,13 H18 L15,9 L15,3 M12,13 V21")
+            });
+            pinViewbox.Child = pinCanvas;
+            pinButton.Content = pinViewbox;
+            pinButton.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+                record.IsClipboardPinned ? "#68C895" : "#949BA5"));
+            pinButton.Click += ToggleClipboardPin_Click;
+            Grid.SetColumn(pinButton, 1);
+            grid.Children.Add(pinButton);
 
             var deleteButton = new Button
             {
@@ -1007,7 +1031,7 @@ namespace QuickCopy
             };
             deleteButton.SetResourceReference(Control.ForegroundProperty, "MutedBrush");
             deleteButton.Click += DeleteClipboardItem_Click;
-            Grid.SetColumn(deleteButton, 1);
+            Grid.SetColumn(deleteButton, 2);
             grid.Children.Add(deleteButton);
 
             row.Child = grid;
@@ -1017,6 +1041,7 @@ namespace QuickCopy
 
         private void ClipboardRow_Click(object sender, MouseButtonEventArgs e)
         {
+            if (FindParent<Button>(e.OriginalSource as DependencyObject) != null) return;
             var row = sender as Border;
             var title = row == null ? null : row.Tag as string;
             DemoRecord record;
@@ -1037,17 +1062,20 @@ namespace QuickCopy
                 lastClipboardSequence = GetClipboardSequenceNumber();
                 PasteToCapturedTarget();
                 var grid = row.Child as Grid;
-                if (grid != null && grid.Children.Count >= 3)
+                if (grid != null && grid.Children.Count >= 4)
                 {
                     var status = grid.Children[1] as TextBlock;
-                    var deleteButton = grid.Children[2] as Button;
+                    var pinButton = grid.Children[2] as Button;
+                    var deleteButton = grid.Children[3] as Button;
                     if (status != null) status.Visibility = Visibility.Visible;
+                    if (pinButton != null) pinButton.Visibility = Visibility.Collapsed;
                     if (deleteButton != null) deleteButton.Visibility = Visibility.Collapsed;
                     var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(850) };
                     timer.Tick += delegate
                     {
                         timer.Stop();
                         if (status != null) status.Visibility = Visibility.Collapsed;
+                        if (pinButton != null) pinButton.Visibility = Visibility.Visible;
                         if (deleteButton != null) deleteButton.Visibility = Visibility.Visible;
                     };
                     timer.Start();
@@ -1055,6 +1083,17 @@ namespace QuickCopy
             }
             catch { CopyCompleted(false); }
             e.Handled = true;
+        }
+
+        private static T FindParent<T>(DependencyObject element) where T : DependencyObject
+        {
+            while (element != null)
+            {
+                var match = element as T;
+                if (match != null) return match;
+                element = VisualTreeHelper.GetParent(element);
+            }
+            return null;
         }
 
         private void DeleteClipboardItem_Click(object sender, RoutedEventArgs e)
@@ -1066,6 +1105,18 @@ namespace QuickCopy
             DeleteRecordImage(record);
             demoRecords.Remove(title);
             RemoveRecordFromOrder(title);
+            SaveRecords();
+            RenderClipboardHistory();
+            e.Handled = true;
+        }
+
+        private void ToggleClipboardPin_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var title = button == null ? null : button.Tag as string;
+            DemoRecord record;
+            if (String.IsNullOrEmpty(title) || !demoRecords.TryGetValue(title, out record)) return;
+            record.IsClipboardPinned = !record.IsClipboardPinned;
             SaveRecords();
             RenderClipboardHistory();
             e.Handled = true;
@@ -1094,10 +1145,11 @@ namespace QuickCopy
             }
         }
 
-        private static DemoRecord CreateClipboardRecord(string title, string text, string imagePath = null)
+        private static DemoRecord CreateClipboardRecord(string title, string text, string imagePath = null,
+            bool isClipboardPinned = false)
         {
             return new DemoRecord(title, ClipboardCategory,
-                new List<RecordField> { new RecordField("内容", text) }, text, imagePath, true);
+                new List<RecordField> { new RecordField("内容", text) }, text, imagePath, true, isClipboardPinned);
         }
 
         private static DemoRecord ParseRecord(string title, string category, string rawText, string imagePath = null)
@@ -1148,7 +1200,7 @@ namespace QuickCopy
                     var imagePath = (string)element.Attribute("image");
                     var rawText = element.Value;
                     demoRecords[title] = category == ClipboardCategory
-                        ? CreateClipboardRecord(title, rawText, imagePath)
+                        ? CreateClipboardRecord(title, rawText, imagePath, (bool?)element.Attribute("pinned") ?? false)
                         : ParseRecord(title, category, rawText, imagePath);
                     EnsureRecordOrder(title, category);
                     AddCategoryToOrder(category);
@@ -1183,6 +1235,7 @@ namespace QuickCopy
                             new XAttribute("title", record.Title),
                             new XAttribute("category", record.Category),
                             String.IsNullOrEmpty(record.ImagePath) ? null : new XAttribute("image", record.ImagePath),
+                            record.IsClipboardPinned ? new XAttribute("pinned", "true") : null,
                             new XCData(record.RawText)))));
                 document.Save(temporaryPath);
                 if (File.Exists(recordsPath))
@@ -1362,12 +1415,9 @@ namespace QuickCopy
 
             copyToastTimer.Stop();
             var target = pasteTargetWindow;
-            if (!isPinned)
-            {
-                Hide();
-                WindowShell.Opacity = 0;
-                pasteTargetWindow = IntPtr.Zero;
-            }
+            Hide();
+            WindowShell.Opacity = 0;
+            pasteTargetWindow = IntPtr.Zero;
             SetForegroundWindow(target);
             var pasteTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
             pasteTimer.Tick += delegate
@@ -1383,9 +1433,11 @@ namespace QuickCopy
 
         private sealed class DemoRecord
         {
-            public DemoRecord(string title, string category, List<RecordField> fields, string rawText, string imagePath, bool isSaved)
+            public DemoRecord(string title, string category, List<RecordField> fields, string rawText, string imagePath,
+                bool isSaved, bool isClipboardPinned = false)
             {
-                Title = title; Category = category; Fields = fields; RawText = rawText; ImagePath = imagePath; IsSaved = isSaved;
+                Title = title; Category = category; Fields = fields; RawText = rawText; ImagePath = imagePath;
+                IsSaved = isSaved; IsClipboardPinned = isClipboardPinned;
             }
             public string Title { get; private set; }
             public string Category { get; private set; }
@@ -1393,6 +1445,7 @@ namespace QuickCopy
             public string RawText { get; private set; }
             public string ImagePath { get; private set; }
             public bool IsSaved { get; private set; }
+            public bool IsClipboardPinned { get; set; }
             public string SearchText { get { return String.Join(" ", Title, Category, RawText); } }
         }
 
