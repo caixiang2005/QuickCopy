@@ -83,6 +83,7 @@ namespace QuickCopy
         private NativeRect pasteTargetCaret;
         private bool hasPasteTargetCaret;
         private string recordsLoadError;
+        private bool recordsLoaded;
 
         public MainWindow()
         {
@@ -176,6 +177,7 @@ namespace QuickCopy
 
         private void ReloadSavedRecords()
         {
+            recordsLoaded = false;
             demoRecords.Clear();
             categoryOrder.Clear();
             recordOrder.Clear();
@@ -191,6 +193,7 @@ namespace QuickCopy
             RenderCategoryButtons();
             RefreshEditorCategories();
             RenderRecords();
+            recordsLoaded = true;
         }
 
         private void PlayEntrance()
@@ -523,6 +526,7 @@ namespace QuickCopy
 
         private void ClipboardMonitorTimer_Tick(object sender, EventArgs e)
         {
+            if (!recordsLoaded) return;
             var sequence = GetClipboardSequenceNumber();
             if (sequence == lastClipboardSequence) return;
             lastClipboardSequence = sequence;
@@ -1161,7 +1165,7 @@ namespace QuickCopy
 
         private void SaveRecords()
         {
-            if (!String.IsNullOrEmpty(recordsLoadError)) return;
+            if (!recordsLoaded || !String.IsNullOrEmpty(recordsLoadError)) return;
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(recordsPath));
