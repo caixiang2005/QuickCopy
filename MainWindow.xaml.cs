@@ -1210,41 +1210,71 @@ namespace QuickCopy
             try
             {
                 if (!File.Exists(recordsPath)) return;
-                var document = XDocument.Load(recordsPath);
-                if (document.Root == null || document.Root.Name != "records")
-                    throw new InvalidDataException("记录文件格式不正确。");
-                foreach (var element in document.Root.Elements("category"))
-                {
-                    var category = (string)element.Attribute("name");
-                    AddCategoryToOrder(category);
-                }
-                foreach (var element in document.Root.Elements("recordOrder"))
-                {
-                    var title = (string)element.Attribute("title");
-                    if (!String.IsNullOrWhiteSpace(title)) recordOrder.Add(title);
-                }
-                foreach (var element in document.Root.Elements("record"))
-                {
-                    var title = (string)element.Attribute("title");
-                    if (String.IsNullOrWhiteSpace(title)) continue;
-                    var category = (string)element.Attribute("category") ?? "其他";
-                    var imagePath = (string)element.Attribute("image");
-                    var rawText = element.Value;
-                    demoRecords[title] = category == ClipboardCategory
-                        ? CreateClipboardRecord(title, rawText, imagePath, (bool?)element.Attribute("pinned") ?? false,
-                            ParseSortKeyAttribute((string)element.Attribute("sortKey")))
-                        : ParseRecord(title, category, rawText, imagePath);
-                    EnsureRecordOrder(title, category);
-                    AddCategoryToOrder(category);
-                }
-                RenderCategoryButtons();
-                RefreshEditorCategories();
+                LoadRecordsFile(recordsPath);
             }
-            catch (Exception exception)
+            catch (Exception mainException)
             {
-                recordsLoadError = "无法读取已有数据。原文件未被修改，请检查后重试：" + recordsPath
-                    + Environment.NewLine + exception.Message;
+                var backupPath = recordsPath + ".bak";
+                try
+                {
+                    if (!File.Exists(backupPath)) throw;
+                    demoRecords.Clear();
+                    categoryOrder.Clear();
+                    recordOrder.Clear();
+                    LoadRecordsFile(backupPath);
+                    recordsLoadError = "主记录文件读取失败，已从备份恢复：" + backupPath
+                        + Environment.NewLine + mainException.Message;
+                }
+                catch (Exception backupException)
+                {
+                    recordsLoadError = "无法读取已有数据。原文件未被修改，请检查后重试：" + recordsPath
+                        + Environment.NewLine + mainException.Message
+                        + Environment.NewLine + "备份读取失败：" + backupException.Message;
+                }
             }
+        }
+
+        private void LoadRecordsFile(string path)
+        {
+            var document = XDocument.Load(path);
+            if (document.Root == null || document.Root.Name != "records")
+                throw new InvalidDataException("记录文件格式不正确。");
+            foreach (var element in document.Root.Elements("category"))
+            {
+                var category = (string)element.Attribute("name");
+                AddCategoryToOrder(category);
+            }
+            foreach (var element in document.Root.Elements("recordOrder"))
+            {
+                var title = (string)element.Attribute("title");
+                if (!String.IsNullOrWhiteSpace(title)) recordOrder.Add(title);
+            }
+            foreach (var element in document.Root.Elements("record"))
+            {
+                try
+                {
+                    LoadRecord(element);
+                }
+                catch
+                {
+                    // A damaged clipboard entry must not hide every saved record.
+                }
+            }
+        }
+
+        private void LoadRecord(XElement element)
+        {
+            var title = (string)element.Attribute("title");
+            if (String.IsNullOrWhiteSpace(title)) return;
+            var category = (string)element.Attribute("category") ?? "其他";
+            var imagePath = (string)element.Attribute("image");
+            var rawText = element.Value;
+            demoRecords[title] = category == ClipboardCategory
+                ? CreateClipboardRecord(title, rawText, imagePath, (bool?)element.Attribute("pinned") ?? false,
+                    ParseSortKeyAttribute((string)element.Attribute("sortKey")))
+                : ParseRecord(title, category, rawText, imagePath);
+            EnsureRecordOrder(title, category);
+            AddCategoryToOrder(category);
         }
 
         private void SaveRecords()
