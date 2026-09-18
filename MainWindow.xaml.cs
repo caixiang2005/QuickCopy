@@ -93,6 +93,8 @@ namespace QuickCopy
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "QuickCopy", "records.xml");
             clipboardImagesFolder = Path.Combine(Path.GetDirectoryName(recordsPath), "clipboard-images");
+            // Load before the first render so startup never presents an empty default shell.
+            ReloadSavedRecords();
             lastClipboardSequence = GetClipboardSequenceNumber();
             clipboardMonitorTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
             clipboardMonitorTimer.Tick += ClipboardMonitorTimer_Tick;
@@ -113,7 +115,8 @@ namespace QuickCopy
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            ReloadSavedRecords();
+            if (!recordsLoaded)
+                ReloadSavedRecords();
             PlayEntrance();
             Keyboard.Focus(WindowShell);
             if (!String.IsNullOrEmpty(recordsLoadError))
