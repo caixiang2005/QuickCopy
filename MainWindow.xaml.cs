@@ -20,6 +20,7 @@ namespace QuickCopy
     {
         private const int HotkeyId = 0x515A;
         private const int WmHotkey = 0x0312;
+        private const int WmShowAndReload = 0x8001;
         private const int WmNcHitTest = 0x0084;
         private const int HtLeft = 10;
         private const int HtRight = 11;
@@ -132,7 +133,12 @@ namespace QuickCopy
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (msg == WmHotkey && wParam.ToInt32() == HotkeyId)
+            if (msg == WmShowAndReload)
+            {
+                ShowAndActivate();
+                handled = true;
+            }
+            else if (msg == WmHotkey && wParam.ToInt32() == HotkeyId)
             {
                 if (IsVisible && WindowState != WindowState.Minimized)
                     HideAnimated();

@@ -8,6 +8,7 @@ namespace QuickCopy
     public partial class App : Application
     {
         private const int SwRestore = 9;
+        private const int WmShowAndReload = 0x8001;
         private static readonly IntPtr InvalidWindow = IntPtr.Zero;
         private static Mutex singleInstanceMutex;
 
@@ -20,6 +21,9 @@ namespace QuickCopy
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+        [DllImport("user32.dll")]
+        private static extern bool PostMessage(IntPtr hWnd, int message, IntPtr wParam, IntPtr lParam);
+
         protected override void OnStartup(StartupEventArgs e)
         {
             bool createdNew;
@@ -29,6 +33,7 @@ namespace QuickCopy
                 var existingWindow = FindWindow(null, "QuickCopy");
                 if (existingWindow != InvalidWindow)
                 {
+                    PostMessage(existingWindow, WmShowAndReload, IntPtr.Zero, IntPtr.Zero);
                     ShowWindow(existingWindow, SwRestore);
                     SetForegroundWindow(existingWindow);
                 }
