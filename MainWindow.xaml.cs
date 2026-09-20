@@ -77,7 +77,7 @@ namespace QuickCopy
         private Point categoryDragStart;
         private string draggedCategory;
         private Point recordTabDragStart;
-        private string draggedRecordTitle;
+        private bool recordTabDragged;
         private bool isLightTheme;
         private bool isWindowPinned;
         private bool isSidebarCollapsed;
@@ -348,6 +348,7 @@ namespace QuickCopy
 
         private void Record_Click(object sender, RoutedEventArgs e)
         {
+            if (recordTabDragged) return;
             var button = sender as Button;
             DemoRecord record;
             var title = button == null ? null : button.CommandParameter as string;
@@ -867,12 +868,10 @@ namespace QuickCopy
                     ToolTip = record.Title
                 };
                 button.Click += Record_Click;
-                button.AllowDrop = true;
                 button.Cursor = Cursors.SizeWE;
-                button.ToolTip = record.Title + Environment.NewLine + "拖拽调整左右顺序";
+                button.ToolTip = record.Title + Environment.NewLine + "左右拖拽滚动";
                 button.PreviewMouseLeftButtonDown += RecordTab_PreviewMouseLeftButtonDown;
                 button.PreviewMouseMove += RecordTab_PreviewMouseMove;
-                button.Drop += RecordTab_Drop;
                 RecordsPanel.Children.Add(button);
                 if (firstButton == null) firstButton = button;
                 if (record.Title == selectedTitle) selectedIsVisible = true;
@@ -908,42 +907,19 @@ namespace QuickCopy
 
         private void RecordTab_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            recordTabDragStart = e.GetPosition(null);
-            var button = sender as Button;
-            draggedRecordTitle = button == null ? null : button.CommandParameter as string;
+            recordTabDragStart = e.GetPosition(RecordTabsScroll);
+            recordTabDragged = false;
         }
 
         private void RecordTab_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton != MouseButtonState.Pressed || String.IsNullOrEmpty(draggedRecordTitle)) return;
-            var current = e.GetPosition(null);
-            if (Math.Abs(current.X - recordTabDragStart.X) < SystemParameters.MinimumHorizontalDragDistance
-                && Math.Abs(current.Y - recordTabDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
-
-            DragDrop.DoDragDrop(sender as DependencyObject, draggedRecordTitle, DragDropEffects.Move);
-            draggedRecordTitle = null;
-        }
-
-        private void RecordTab_Drop(object sender, DragEventArgs e)
-        {
-            var target = sender as Button;
-            var sourceTitle = e.Data.GetData(typeof(string)) as string;
-            var targetTitle = target == null ? null : target.CommandParameter as string;
-            if (String.IsNullOrEmpty(sourceTitle) || String.IsNullOrEmpty(targetTitle)
-                || String.Equals(sourceTitle, targetTitle, StringComparison.CurrentCultureIgnoreCase)) return;
-
-            var sourceIndex = recordOrder.FindIndex(title => String.Equals(title, sourceTitle,
-                StringComparison.CurrentCultureIgnoreCase));
-            var targetIndex = recordOrder.FindIndex(title => String.Equals(title, targetTitle,
-                StringComparison.CurrentCultureIgnoreCase));
-            if (sourceIndex < 0 || targetIndex < 0) return;
-
-            var insertAfter = e.GetPosition(target).X > target.ActualWidth / 2;
-            recordOrder.RemoveAt(sourceIndex);
-            if (sourceIndex < targetIndex) targetIndex--;
-            recordOrder.Insert(insertAfter ? targetIndex + 1 : targetIndex, sourceTitle);
-            RenderRecords();
-            SaveRecords();
+            if (e.LeftButton != MouseButtonState.Pressed) return;
+            var current = e.GetPosition(RecordTabsScroll);
+            var delta = current.X - recordTabDragStart.X;
+            if (Math.Abs(delta) < 2) return;
+            recordTabDragged = true;
+            RecordTabsScroll.ScrollToHorizontalOffset(RecordTabsScroll.HorizontalOffset - delta);
+            recordTabDragStart = current;
             e.Handled = true;
         }
 

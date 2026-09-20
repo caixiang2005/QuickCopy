@@ -265,7 +265,7 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto"
+                                <ScrollViewer x:Name="RecordTabsScroll" Grid.Column="0" HorizontalScrollBarVisibility="Hidden"
                                               VerticalScrollBarVisibility="Disabled" PanningMode="HorizontalOnly"
                                               FontSize="12" Margin="0,0,10,0">
                                     <StackPanel x:Name="RecordsPanel" Orientation="Horizontal" VerticalAlignment="Center" />
