@@ -253,7 +253,7 @@
                 </Border>
 
                 <Border Grid.Row="1" Background="{DynamicResource PanelAltBrush}">
-                    <ScrollViewer Margin="24,10,22,18"
+                    <ScrollViewer Margin="44,10,44,18"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
                         <StackPanel>
