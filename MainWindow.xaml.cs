@@ -1248,12 +1248,13 @@ namespace QuickCopy
             return new DemoRecord(title, category, fields, rawText, imagePath, true);
         }
 
-        // A value wrapped in { } is kept whole, so colons and quotes inside it never become a label separator.
+        // A value wrapped in { } or ｛ ｝ is kept whole, so colons and quotes inside it never become a label separator.
         private static string UnwrapBracedValue(string value)
         {
-            return value.Length >= 2 && value[0] == '{' && value[value.Length - 1] == '}'
-                ? value.Substring(1, value.Length - 2).Trim()
-                : value;
+            var wrapped = value.Length >= 2
+                && (value[0] == '{' || value[0] == '｛')
+                && (value[value.Length - 1] == '}' || value[value.Length - 1] == '｝');
+            return wrapped ? value.Substring(1, value.Length - 2).Trim() : value;
         }
 
         private void LoadSavedRecords()
