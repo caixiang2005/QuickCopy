@@ -70,7 +70,7 @@ namespace QuickCopy
         private readonly string clipboardImagesFolder;
         private readonly DispatcherTimer copyToastTimer;
         private uint lastClipboardSequence;
-        private string selectedCategory = "内部系统";
+        private string selectedCategory;
         private string selectedTitle;
         private string editingOriginalTitle;
         private string editingOriginalImagePath;
@@ -85,6 +85,8 @@ namespace QuickCopy
         private bool hasPasteTargetCaret;
         private string recordsLoadError;
         private bool recordsLoaded;
+        private bool recordsSaveBlocked;
+        private bool recordsRestoredFromBackup;
 
         public MainWindow()
         {
@@ -191,18 +193,28 @@ namespace QuickCopy
             categoryOrder.Clear();
             recordOrder.Clear();
             recordsLoadError = null;
+            recordsSaveBlocked = false;
+            recordsRestoredFromBackup = false;
             LoadSavedRecords();
             EnsureCategoriesFromRecords();
 
+            // Fall back to the first tag, or the clipboard view when there are no tags, so startup never lands on a blank panel.
             if (!String.Equals(selectedCategory, ClipboardCategory, StringComparison.CurrentCultureIgnoreCase)
                 && !categoryOrder.Any(category => String.Equals(category, selectedCategory,
                     StringComparison.CurrentCultureIgnoreCase)))
-                selectedCategory = categoryOrder.FirstOrDefault();
+                selectedCategory = categoryOrder.FirstOrDefault() ?? ClipboardCategory;
 
             RenderCategoryButtons();
             RefreshEditorCategories();
+            var isClipboardSelected = String.Equals(selectedCategory, ClipboardCategory,
+                StringComparison.CurrentCultureIgnoreCase);
+            ClipboardButton.Tag = isClipboardSelected ? "Selected" : null;
+            DeleteCategoryButton.IsEnabled = !isClipboardSelected;
+            DeleteCategoryButton.Visibility = isClipboardSelected ? Visibility.Hidden : Visibility.Visible;
             RenderRecords();
             recordsLoaded = true;
+            if (recordsRestoredFromBackup)
+                SaveRecords();
         }
 
         private void PlayEntrance()
@@ -788,11 +800,11 @@ namespace QuickCopy
             var first = CategoriesPanel.Children.OfType<Button>().FirstOrDefault();
             if (first == null)
             {
-                selectedCategory = null;
-                RecordsPanel.Children.Clear();
-                ClearRecordDisplay();
+                selectedCategory = ClipboardCategory;
+                ClipboardButton.Tag = "Selected";
                 DeleteCategoryButton.IsEnabled = false;
                 DeleteCategoryButton.Visibility = Visibility.Hidden;
+                RenderRecords();
                 return;
             }
             selectedCategory = first.Content.ToString();
@@ -1231,11 +1243,13 @@ namespace QuickCopy
                     categoryOrder.Clear();
                     recordOrder.Clear();
                     LoadRecordsFile(backupPath);
+                    recordsRestoredFromBackup = true;
                     recordsLoadError = "主记录文件读取失败，已从备份恢复：" + backupPath
                         + Environment.NewLine + mainException.Message;
                 }
                 catch (Exception backupException)
                 {
+                    recordsSaveBlocked = true;
                     recordsLoadError = "无法读取已有数据。原文件未被修改，请检查后重试：" + recordsPath
                         + Environment.NewLine + mainException.Message
                         + Environment.NewLine + "备份读取失败：" + backupException.Message;
@@ -1288,7 +1302,7 @@ namespace QuickCopy
 
         private void SaveRecords()
         {
-            if (!recordsLoaded || !String.IsNullOrEmpty(recordsLoadError)) return;
+            if (!recordsLoaded || recordsSaveBlocked) return;
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(recordsPath));
@@ -1317,8 +1331,9 @@ namespace QuickCopy
             }
             catch (Exception)
             {
-                recordsLoadError = "无法保存数据。原文件未被覆盖，请检查后重试：" + recordsPath;
-                MessageBox.Show(this, recordsLoadError, "QuickCopy", MessageBoxButton.OK, MessageBoxImage.Error);
+                recordsSaveBlocked = true;
+                MessageBox.Show(this, "无法保存数据。原文件未被覆盖，请检查后重试：" + recordsPath,
+                    "QuickCopy", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
