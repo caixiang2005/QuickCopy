@@ -310,9 +310,9 @@
             </Border>
 
             <Grid x:Name="EditorOverlay" Grid.ColumnSpan="2" Background="#99000000" Visibility="Collapsed">
-                <Border Width="510" MaxHeight="500" Padding="26" Background="{DynamicResource PanelBrush}"
+                <Border MaxWidth="510" MaxHeight="500" Padding="26" Margin="14" Background="{DynamicResource PanelBrush}"
                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7"
-                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                        HorizontalAlignment="Stretch" VerticalAlignment="Center">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
