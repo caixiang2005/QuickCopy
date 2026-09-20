@@ -1219,11 +1219,19 @@ namespace QuickCopy
                 }
 
                 var key = line.Substring(0, separator).Trim();
-                var value = line.Substring(separator + 1).Trim();
+                var value = UnwrapBracedValue(line.Substring(separator + 1).Trim());
                 fields.Add(new RecordField(key, value));
             }
 
             return new DemoRecord(title, category, fields, rawText, imagePath, true);
+        }
+
+        // A value wrapped in { } is kept whole, so colons and quotes inside it never become a label separator.
+        private static string UnwrapBracedValue(string value)
+        {
+            return value.Length >= 2 && value[0] == '{' && value[value.Length - 1] == '}'
+                ? value.Substring(1, value.Length - 2).Trim()
+                : value;
         }
 
         private void LoadSavedRecords()
