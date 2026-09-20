@@ -82,6 +82,7 @@ namespace QuickCopy
         private bool isWindowPinned;
         private bool isSidebarCollapsed;
         private GridLength sidebarExpandedWidth;
+        private double windowExpandedWidth;
         private IntPtr pasteTargetWindow;
         private NativeRect pasteTargetCaret;
         private bool hasPasteTargetCaret;
@@ -177,7 +178,7 @@ namespace QuickCopy
             ReloadSavedRecords();
             CapturePasteTarget();
             WindowState = WindowState.Normal;
-            Width = DefaultWindowWidth;
+            Width = isSidebarCollapsed ? DefaultWindowWidth - sidebarExpandedWidth.Value : DefaultWindowWidth;
             Height = DefaultWindowHeight;
             PositionNearCaret();
             Show();
@@ -271,13 +272,16 @@ namespace QuickCopy
             if (isSidebarCollapsed)
             {
                 sidebarExpandedWidth = SidebarColumn.Width;
+                windowExpandedWidth = Width;
                 SidebarColumn.Width = new GridLength(0);
                 SidebarPanel.Visibility = Visibility.Collapsed;
+                Width = Math.Max(MinWidth, windowExpandedWidth - sidebarExpandedWidth.Value);
             }
             else
             {
                 SidebarColumn.Width = sidebarExpandedWidth;
                 SidebarPanel.Visibility = Visibility.Visible;
+                Width = windowExpandedWidth;
             }
             SidebarToggleIcon.Data = Geometry.Parse(isSidebarCollapsed
                 ? "M9.5,4 L16.5,12 L9.5,20"
@@ -1475,21 +1479,21 @@ namespace QuickCopy
             var workArea = SystemParameters.WorkArea;
             if (!hasPasteTargetCaret)
             {
-                Left = workArea.Left + (workArea.Width - DefaultWindowWidth) / 2;
+                Left = workArea.Left + (workArea.Width - Width) / 2;
                 Top = workArea.Top + (workArea.Height - DefaultWindowHeight) / 2;
                 return;
             }
 
             const double gap = 12;
             var left = pasteTargetCaret.Right + gap;
-            if (left + DefaultWindowWidth > workArea.Right)
-                left = pasteTargetCaret.Left - DefaultWindowWidth - gap;
+            if (left + Width > workArea.Right)
+                left = pasteTargetCaret.Left - Width - gap;
 
             var top = pasteTargetCaret.Top - DefaultWindowHeight - gap;
             if (top < workArea.Top)
                 top = pasteTargetCaret.Bottom + gap;
 
-            Left = Math.Max(workArea.Left, Math.Min(left, workArea.Right - DefaultWindowWidth));
+            Left = Math.Max(workArea.Left, Math.Min(left, workArea.Right - Width));
             Top = Math.Max(workArea.Top, Math.Min(top, workArea.Bottom - DefaultWindowHeight));
         }
 
