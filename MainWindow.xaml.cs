@@ -24,7 +24,7 @@ namespace QuickCopy
         private const int WmNcHitTest = 0x0084;
         private const int HtLeft = 10;
         private const int HtRight = 11;
-        private const double DefaultWindowWidth = 580;
+        private const double DefaultWindowWidth = 500;
         private const double DefaultWindowHeight = 520;
         private const string ClipboardCategory = "剪贴板";
         private const int ClipboardHistoryLimit = 50;
@@ -80,6 +80,8 @@ namespace QuickCopy
         private string draggedRecordTitle;
         private bool isLightTheme;
         private bool isWindowPinned;
+        private bool isSidebarCollapsed;
+        private GridLength sidebarExpandedWidth;
         private IntPtr pasteTargetWindow;
         private NativeRect pasteTargetCaret;
         private bool hasPasteTargetCaret;
@@ -261,6 +263,26 @@ namespace QuickCopy
             WindowPinButton.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(
                 isWindowPinned ? "#68C895" : "#949BA5"));
             WindowPinButton.ToolTip = isWindowPinned ? "取消窗口置顶（连续粘贴）" : "窗口置顶";
+        }
+
+        private void SidebarToggleButton_Click(object sender, RoutedEventArgs e)
+        {
+            isSidebarCollapsed = !isSidebarCollapsed;
+            if (isSidebarCollapsed)
+            {
+                sidebarExpandedWidth = SidebarColumn.Width;
+                SidebarColumn.Width = new GridLength(0);
+                SidebarPanel.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                SidebarColumn.Width = sidebarExpandedWidth;
+                SidebarPanel.Visibility = Visibility.Visible;
+            }
+            SidebarToggleIcon.Data = Geometry.Parse(isSidebarCollapsed
+                ? "M9.5,4 L16.5,12 L9.5,20"
+                : "M14.5,4 L7.5,12 L14.5,20");
+            SidebarToggleButton.ToolTip = isSidebarCollapsed ? "展开标签栏" : "收起标签栏";
         }
 
         private void AddButton_Click(object sender, RoutedEventArgs e)
