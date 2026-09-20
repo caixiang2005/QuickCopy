@@ -24,7 +24,7 @@ namespace QuickCopy
         private const int WmNcHitTest = 0x0084;
         private const int HtLeft = 10;
         private const int HtRight = 11;
-        private const double DefaultWindowWidth = 500;
+        private const double DefaultWindowWidth = 440;
         private const double DefaultWindowHeight = 520;
         private const string ClipboardCategory = "剪贴板";
         private const int ClipboardHistoryLimit = 50;
