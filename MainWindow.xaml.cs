@@ -1248,13 +1248,14 @@ namespace QuickCopy
             return new DemoRecord(title, category, fields, rawText, imagePath, true);
         }
 
-        // A value wrapped in { } or ｛ ｝ is kept whole, so colons and quotes inside it never become a label separator.
+        // Braces around a value ({ } or ｛ ｝) are decorative markers: strip a leading and a trailing brace independently, so colons and quotes inside never become a label separator even when the pair spans multiple lines.
         private static string UnwrapBracedValue(string value)
         {
-            var wrapped = value.Length >= 2
-                && (value[0] == '{' || value[0] == '｛')
-                && (value[value.Length - 1] == '}' || value[value.Length - 1] == '｝');
-            return wrapped ? value.Substring(1, value.Length - 2).Trim() : value;
+            var start = 0;
+            var end = value.Length;
+            if (end > start && (value[start] == '{' || value[start] == '｛')) start++;
+            if (end > start && (value[end - 1] == '}' || value[end - 1] == '｝')) end--;
+            return value.Substring(start, end - start).Trim();
         }
 
         private void LoadSavedRecords()
